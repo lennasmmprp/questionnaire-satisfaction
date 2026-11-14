@@ -907,7 +907,7 @@
   async function fetchCount() {
     if (!CONFIG.scriptUrl) return;
     try {
-      const url = CONFIG.scriptUrl + '?action=count&formation=' + encodeURIComponent(CONFIG.formation);
+      const url = CONFIG.scriptUrl + '?action=count&formation=' + encodeURIComponent(CONFIG.formation) + '&date=' + encodeURIComponent(CONFIG.date);
       const resp = await fetch(url);
       const data = await resp.json();
       if (data && typeof data.count === 'number') {
@@ -1055,6 +1055,8 @@
   // Admin: end session
   function endSession() {
     if (refreshInterval) clearInterval(refreshInterval);
+    CONFIG.received = 0;
+    updateGauge();
     showScreen('screenAdminWelcome');
   }
 
