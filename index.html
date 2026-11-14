@@ -1177,6 +1177,16 @@
     // No admin badge, no config
     document.getElementById('dispFormationP').textContent = CONFIG.formation;
     document.getElementById('dispDateP').textContent = CONFIG.date;
+
+    // Afficher le logo si fourni via URL, sinon masquer la zone
+    if (CONFIG.logoDataUrl) {
+      var pLogo = document.getElementById('participantLogoImg');
+      pLogo.src = CONFIG.logoDataUrl;
+      pLogo.style.display = 'block';
+    } else {
+      document.getElementById('participantLogoArea').style.display = 'none';
+    }
+
     showScreen('screenParticipantWelcome');
   } else {
     // ─── ADMIN MODE ───
