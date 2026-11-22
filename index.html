@@ -46,7 +46,6 @@
     flex-direction: column;
   }
 
-  /* ─── PROGRESS BAR ─── */
   .progress-bar-wrap {
     width: 100%;
     height: 6px;
@@ -66,7 +65,6 @@
     width: 0%;
   }
 
-  /* ─── SCREENS ─── */
   .screen {
     display: none;
     flex-direction: column;
@@ -80,7 +78,6 @@
     to { opacity: 1; transform: translateY(0); }
   }
 
-  /* ─── WELCOME / CONFIG SCREEN (admin) ─── */
   .logo-area {
     width: 100%;
     aspect-ratio: 3 / 1.2;
@@ -145,7 +142,6 @@
     margin-bottom: 24px;
   }
 
-  /* ─── QR CODE DASHBOARD (admin after launch) ─── */
   .qr-section {
     text-align: center;
     margin-bottom: 24px;
@@ -185,7 +181,6 @@
     color: var(--text-muted);
   }
 
-  /* ─── GAUGE ─── */
   .gauge-card {
     background: var(--white);
     border-radius: var(--radius-md);
@@ -248,7 +243,6 @@
     margin-top: 8px;
   }
 
-  /* ─── PARTICIPANT WELCOME ─── */
   .participant-welcome-logo {
     width: 100%;
     aspect-ratio: 3 / 1.2;
@@ -270,7 +264,6 @@
     object-fit: contain;
   }
 
-  /* ─── MOBILE OPTIMIZATIONS ─── */
   @media (max-width: 480px) {
     .container {
       padding: 16px 16px;
@@ -315,7 +308,6 @@
     }
   }
 
-  /* ─── QUESTION SCREEN ─── */
   .question-counter {
     font-size: 12px;
     font-weight: 700;
@@ -332,7 +324,6 @@
     letter-spacing: -0.01em;
   }
 
-  /* Rating scale */
   .rating-scale {
     display: flex;
     gap: 12px;
@@ -371,7 +362,6 @@
     padding: 0 8px;
   }
 
-  /* Multiple choice */
   .choices {
     display: flex;
     flex-direction: column;
@@ -397,7 +387,6 @@
     color: var(--white);
   }
 
-  /* Open text */
   .open-textarea {
     width: 100%;
     min-height: 120px;
@@ -416,7 +405,6 @@
   .open-textarea:focus { border-color: var(--navy); }
   .open-textarea::placeholder { color: var(--text-muted); }
 
-  /* ─── BUTTONS ─── */
   .btn-row {
     margin-top: auto;
     display: flex;
@@ -459,7 +447,6 @@
   }
   .btn-yellow:hover { background: var(--yellow-hover); }
 
-  /* ─── THANK YOU SCREEN ─── */
   .thankyou-icon {
     width: 80px;
     height: 80px;
@@ -486,7 +473,6 @@
     line-height: 1.6;
   }
 
-  /* ─── SENDING OVERLAY ─── */
   .sending-overlay {
     display: none;
     position: fixed;
@@ -514,7 +500,6 @@
     color: var(--text-dark);
   }
 
-  /* ─── ADMIN BADGE ─── */
   .admin-badge {
     position: fixed;
     top: 12px;
@@ -533,7 +518,6 @@
   }
   .admin-badge.visible { display: block; }
 
-  /* ─── CONFIG PANEL ─── */
   .config-overlay {
     display: none;
     position: fixed;
@@ -627,7 +611,6 @@
     margin-top: 24px;
   }
 
-  /* ─── LIVE PULSE ─── */
   .live-dot {
     display: inline-block;
     width: 8px;
@@ -645,16 +628,13 @@
 </head>
 <body>
 
-<!-- Sending overlay -->
 <div class="sending-overlay" id="sendingOverlay">
   <div class="spinner"></div>
   <div class="sending-text">Envoi en cours…</div>
 </div>
 
-<!-- Admin badge (visible on admin screens) -->
 <div class="admin-badge" id="adminBadge" onclick="openConfig()">⚙ Config</div>
 
-<!-- Config overlay -->
 <div class="config-overlay" id="configOverlay" onclick="closeConfigOutside(event)">
   <div class="config-panel">
     <h3>⚙ Configuration</h3>
@@ -675,6 +655,15 @@
       <label>Nombre de participants</label>
       <input type="number" id="cfgParticipants" value="15" min="1" max="200" placeholder="15">
     </div>
+    <div class="config-field">
+      <label>Modèle de questionnaire</label>
+      <select id="cfgTemplate">
+        <option value="general">Général (satisfaction formation)</option>
+        <option value="thelem">Thelem — 26/11 (prise de parole & communication)</option>
+      </select>
+      <div class="config-hint" id="cfgTemplateHint">8 questions — satisfaction globale, méthode, formateur…</div>
+    </div>
+
     <div class="config-field">
       <label>Logo de l'entreprise</label>
       <input type="file" id="cfgLogo" accept="image/*">
@@ -698,14 +687,10 @@
 
 <div class="container">
 
-  <!-- ═══ PROGRESS BAR ═══ -->
   <div class="progress-bar-wrap" id="progressWrap">
     <div class="progress-bar-fill" id="progressFill"></div>
   </div>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- SCREEN: ADMIN WELCOME (config + launch)    -->
-  <!-- ═══════════════════════════════════════════ -->
   <div class="screen" id="screenAdminWelcome">
     <div class="logo-area" id="logoArea" onclick="document.getElementById('logoInput').click()">
       <div class="placeholder" id="logoPlaceholder">
@@ -729,9 +714,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- SCREEN: ADMIN DASHBOARD (QR + gauge live)  -->
-  <!-- ═══════════════════════════════════════════ -->
   <div class="screen" id="screenAdminDashboard">
     <div class="qr-section">
       <h2>Scannez pour répondre</h2>
@@ -760,9 +742,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- SCREEN: PARTICIPANT WELCOME                -->
-  <!-- ═══════════════════════════════════════════ -->
   <div class="screen" id="screenParticipantWelcome">
     <div class="participant-welcome-logo" id="participantLogoArea">
       <img id="participantLogoImg" style="display:none" alt="Logo">
@@ -780,9 +759,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- SCREEN: QUESTIONS (participants)           -->
-  <!-- ═══════════════════════════════════════════ -->
   <div class="screen" id="screenQuestion">
     <div class="question-counter" id="qCounter">Question 1 / 8</div>
     <div class="question-text" id="qText"></div>
@@ -793,9 +769,6 @@
     </div>
   </div>
 
-  <!-- ═══════════════════════════════════════════ -->
-  <!-- SCREEN: THANK YOU                          -->
-  <!-- ═══════════════════════════════════════════ -->
   <div class="screen" id="screenThanks">
     <div class="thankyou-icon">✓</div>
     <div class="thankyou-title">Merci !</div>
@@ -808,15 +781,9 @@
 </div>
 
 <script>
-  // ═══════════════════════════════════════
-  // MODE DETECTION
-  // ═══════════════════════════════════════
   const urlParams = new URLSearchParams(window.location.search);
   const IS_PARTICIPANT = urlParams.has('p');
 
-  // ═══════════════════════════════════════
-  // CONFIG STATE
-  // ═══════════════════════════════════════
   let CONFIG = {
     formation: urlParams.get('f') || 'Prise de parole en public',
     date: '',
@@ -824,63 +791,109 @@
     participants: parseInt(urlParams.get('n')) || 15,
     scriptUrl: 'https://script.google.com/macros/s/AKfycbxR2CBwX5pMlMa8KC01mOK4Zon5Z8xbIWYDdpTHv4L2bioIyvK1cMiSvJAruetNIUseZg/exec',
     received: 0,
-    logoDataUrl: urlParams.get('logo') || ''
+    logoDataUrl: urlParams.get('logo') || '',
+    dateISO: '',
+    template: urlParams.get('tpl') || 'general'
   };
 
   let refreshInterval = null;
 
-  // ═══════════════════════════════════════
-  // QUESTIONS DATA
-  // ═══════════════════════════════════════
-  const questions = [
-    {
-      text: "Comment évaluez-vous la qualité globale de cette formation ?",
-      type: "rating",
-      labels: ["Pas du tout satisfait", "Très satisfait"]
-    },
-    {
-      text: "Le contenu de la formation correspondait-il à vos attentes ?",
-      type: "rating",
-      labels: ["Pas du tout", "Tout à fait"]
-    },
-    {
-      text: "Comment évaluez-vous la qualité de l'animation ?",
-      type: "rating",
-      labels: ["Insuffisant", "Excellent"]
-    },
-    {
-      text: "Les méthodes pédagogiques utilisées étaient-elles adaptées ?",
-      type: "choice",
-      options: ["Très adaptées", "Plutôt adaptées", "Peu adaptées", "Pas du tout adaptées"]
-    },
-    {
-      text: "Pensez-vous pouvoir appliquer les acquis dans votre quotidien professionnel ?",
-      type: "rating",
-      labels: ["Pas du tout", "Tout à fait"]
-    },
-    {
-      text: "Comment évaluez-vous l'organisation matérielle (lieu, horaires, supports) ?",
-      type: "rating",
-      labels: ["Insuffisant", "Excellent"]
-    },
-    {
-      text: "Recommanderiez-vous cette formation à un collègue ?",
-      type: "choice",
-      options: ["Oui, absolument", "Probablement oui", "Probablement non", "Non"]
-    },
-    {
-      text: "Un commentaire, une suggestion, un mot pour l'équipe ?",
-      type: "text",
-      placeholder: "Écrivez librement ici…"
-    }
-  ];
+  const TEMPLATES = {
+    general: [
+      {
+        text: "Globalement, êtes-vous satisfait·e de la formation que vous avez suivie ?",
+        type: "rating",
+        labels: ["Pas du tout", "Tout à fait"]
+      },
+      {
+        text: "Êtes-vous satisfait·e des apprentissages délivrés ?",
+        type: "rating",
+        labels: ["Pas du tout", "Tout à fait"]
+      },
+      {
+        text: "Êtes-vous satisfait·e de la méthode d'apprentissage expérientielle (très peu de théorie, beaucoup de pratique) ?",
+        type: "rating",
+        labels: ["Pas du tout", "Tout à fait"]
+      },
+      {
+        text: "Êtes-vous satisfait·e du formateur ?",
+        type: "rating",
+        labels: ["Pas du tout", "Tout à fait"]
+      },
+      {
+        text: "Recommanderiez-vous cette formation ?",
+        type: "choice",
+        options: ["Oui", "Non"]
+      },
+      {
+        text: "Souhaiteriez-vous vous former à d'autres thématiques (management, gestion des conflits…) par le biais de l'impro ?",
+        type: "choice",
+        options: ["Oui", "Non"]
+      },
+      {
+        text: "Si oui, quelle(s) thématique(s) vous intéresserait(ent) ?",
+        type: "text",
+        placeholder: "Management, gestion des conflits, cohésion d'équipe…"
+      },
+      {
+        text: "Selon vous, quels sont les points à améliorer dans cette formation ?",
+        type: "text",
+        placeholder: "Vos suggestions…"
+      }
+    ],
+    thelem: [
+      {
+        text: "Êtes-vous plus en confiance pour vous exprimer oralement quel que soit le contexte ?",
+        type: "rating",
+        labels: ["Pas du tout", "Tout à fait"]
+      },
+      {
+        text: "Vous sentez-vous plus à l'aise pour adapter votre façon de communiquer à la personnalité et au style de chaque interlocuteur ?",
+        type: "rating",
+        labels: ["Pas du tout", "Tout à fait"]
+      },
+      {
+        text: "Êtes-vous plus en mesure d'identifier rapidement le profil de communication d'un client pour ajuster votre posture et votre discours en rendez-vous ?",
+        type: "rating",
+        labels: ["Pas du tout", "Tout à fait"]
+      },
+      {
+        text: "Vous sentez-vous mieux armé(e) pour gérer les imprévus en rendez-vous client (objection, question inattendue, changement de cap du client) ?",
+        type: "rating",
+        labels: ["Pas du tout", "Tout à fait"]
+      },
+      {
+        text: "Quel est l'apport principal que vous retenez de cette formation ?",
+        type: "text",
+        placeholder: "Votre réponse…"
+      },
+      {
+        text: "Quelle question, méthode ou réflexe allez-vous tester dans votre travail à la suite de cette formation ?",
+        type: "text",
+        placeholder: "Votre réponse…"
+      }
+    ]
+  };
+
+  const TEMPLATE_HINTS = {
+    general: '8 questions — satisfaction globale, méthode, formateur…',
+    thelem: '6 questions — confiance, communication, gestion des imprévus…'
+  };
+
+  let questions = TEMPLATES.general;
 
   let currentQ = 0;
   let answers = new Array(questions.length).fill(null);
 
-  // ═══════════════════════════════════════
-  // GAUGE
-  // ═══════════════════════════════════════
+  function switchTemplate(templateKey) {
+    questions = TEMPLATES[templateKey] || TEMPLATES.general;
+    answers = new Array(questions.length).fill(null);
+    currentQ = 0;
+    CONFIG.template = templateKey;
+    const hint = document.getElementById('cfgTemplateHint');
+    if (hint) hint.textContent = TEMPLATE_HINTS[templateKey] || '';
+  }
+
   function updateGauge() {
     const received = CONFIG.received;
     const total = CONFIG.participants;
@@ -900,7 +913,7 @@
       status.innerHTML = '🎉 <strong>Complet !</strong> Toutes les réponses sont reçues.';
     } else {
       const remaining = total - received;
-      status.innerHTML = `<strong>${remaining}</strong> réponse${remaining > 1 ? 's' : ''} restante${remaining > 1 ? 's' : ''}`;
+      status.innerHTML = '<strong>' + remaining + '</strong> réponse' + (remaining > 1 ? 's' : '') + ' restante' + (remaining > 1 ? 's' : '');
     }
   }
 
@@ -919,9 +932,6 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  // QR CODE
-  // ═══════════════════════════════════════
   function generateQR() {
     const baseUrl = window.location.origin + window.location.pathname;
     const params = new URLSearchParams({
@@ -929,7 +939,8 @@
       f: CONFIG.formation,
       t: CONFIG.formateur,
       n: CONFIG.participants,
-      d: CONFIG.date
+      d: CONFIG.date,
+      tpl: CONFIG.template
     });
     const participantUrl = baseUrl + '?' + params.toString();
 
@@ -940,7 +951,6 @@
     const container = document.getElementById('qrCodeContainer');
     container.innerHTML = qr.createSvgTag(6, 0);
 
-    // Style the SVG
     const svg = container.querySelector('svg');
     if (svg) {
       svg.style.width = '200px';
@@ -951,9 +961,6 @@
     document.getElementById('qrDateLabel').textContent = CONFIG.date;
   }
 
-  // ═══════════════════════════════════════
-  // CONFIG PANEL
-  // ═══════════════════════════════════════
   function openConfig() {
     document.getElementById('configOverlay').classList.add('open');
     updateConnectionStatus();
@@ -985,8 +992,12 @@
     CONFIG.participants = parseInt(document.getElementById('cfgParticipants').value) || 15;
     CONFIG.scriptUrl = document.getElementById('cfgScriptUrl').value.trim();
 
+    const tpl = document.getElementById('cfgTemplate').value;
+    switchTemplate(tpl);
+
     const dateVal = document.getElementById('cfgDate').value;
     if (dateVal) {
+      CONFIG.dateISO = dateVal;
       const d = new Date(dateVal + 'T00:00:00');
       CONFIG.date = d.toLocaleDateString('fr-FR', {
         weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
@@ -1017,9 +1028,6 @@
     document.getElementById('logoArea').style.border = 'none';
   }
 
-  // ═══════════════════════════════════════
-  // LOGO UPLOAD (welcome screen)
-  // ═══════════════════════════════════════
   function handleLogo(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1031,15 +1039,11 @@
     reader.readAsDataURL(file);
   }
 
-  // ═══════════════════════════════════════
-  // NAVIGATION
-  // ═══════════════════════════════════════
   function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
   }
 
-  // Admin: launch session → show QR + gauge
   function launchSession() {
     applyConfig();
     generateQR();
@@ -1047,12 +1051,10 @@
     fetchCount();
     showScreen('screenAdminDashboard');
 
-    // Auto-refresh gauge every 10s
     if (refreshInterval) clearInterval(refreshInterval);
     refreshInterval = setInterval(fetchCount, 10000);
   }
 
-  // Admin: end session
   function endSession() {
     if (refreshInterval) clearInterval(refreshInterval);
     CONFIG.received = 0;
@@ -1060,21 +1062,17 @@
     showScreen('screenAdminWelcome');
   }
 
-  // Participant: start questions
   function startQuestions() {
     document.getElementById('progressWrap').classList.add('visible');
     showScreen('screenQuestion');
     renderQuestion();
   }
 
-  // ═══════════════════════════════════════
-  // QUESTIONS
-  // ═══════════════════════════════════════
   function renderQuestion() {
     const q = questions[currentQ];
-    document.getElementById('qCounter').textContent = `Question ${currentQ + 1} / ${questions.length}`;
+    document.getElementById('qCounter').textContent = 'Question ' + (currentQ + 1) + ' / ' + questions.length;
     document.getElementById('qText').textContent = q.text;
-    document.getElementById('progressFill').style.width = `${((currentQ + 1) / questions.length) * 100}%`;
+    document.getElementById('progressFill').style.width = (((currentQ + 1) / questions.length) * 100) + '%';
     document.getElementById('btnPrev').style.visibility = currentQ === 0 ? 'hidden' : 'visible';
 
     const isLast = currentQ === questions.length - 1;
@@ -1098,7 +1096,7 @@
       if (q.labels) {
         const labels = document.createElement('div');
         labels.className = 'rating-labels';
-        labels.innerHTML = `<span>${q.labels[0]}</span><span>${q.labels[1]}</span>`;
+        labels.innerHTML = '<span>' + q.labels[0] + '</span><span>' + q.labels[1] + '</span>';
         body.appendChild(labels);
       }
     }
@@ -1170,15 +1168,13 @@
     }
   }
 
-  // ═══════════════════════════════════════
-  // SUBMIT
-  // ═══════════════════════════════════════
   async function submitAnswers() {
     const payload = {
       formation: CONFIG.formation,
       date: CONFIG.date || urlParams.get('d') || '',
       formateur: CONFIG.formateur,
       participants: CONFIG.participants,
+      template: CONFIG.template,
       answers: answers.map((a, i) => {
         const q = questions[i];
         if (q.type === 'choice') return q.options[a] || '';
@@ -1210,11 +1206,9 @@
     showScreen('screenThanks');
   }
 
-  // ═══════════════════════════════════════
-  // INIT
-  // ═══════════════════════════════════════
   const today = new Date();
-  document.getElementById('cfgDate').value = today.toISOString().split('T')[0];
+  CONFIG.dateISO = today.toISOString().split('T')[0];
+  document.getElementById('cfgDate').value = CONFIG.dateISO;
 
   if (urlParams.get('d')) {
     CONFIG.date = urlParams.get('d');
@@ -1224,13 +1218,14 @@
     });
   }
 
+  if (CONFIG.template && TEMPLATES[CONFIG.template]) {
+    switchTemplate(CONFIG.template);
+  }
+
   if (IS_PARTICIPANT) {
-    // ─── PARTICIPANT MODE ───
-    // No admin badge, no config
     document.getElementById('dispFormationP').textContent = CONFIG.formation;
     document.getElementById('dispDateP').textContent = CONFIG.date;
 
-    // Afficher le logo si fourni via URL, sinon masquer la zone
     if (CONFIG.logoDataUrl) {
       var pLogo = document.getElementById('participantLogoImg');
       pLogo.src = CONFIG.logoDataUrl;
@@ -1241,11 +1236,17 @@
 
     showScreen('screenParticipantWelcome');
   } else {
-    // ─── ADMIN MODE ───
     document.getElementById('cfgFormation').value = CONFIG.formation;
+    document.getElementById('cfgTemplate').value = CONFIG.template;
     document.getElementById('dispFormation').textContent = CONFIG.formation;
     document.getElementById('dispDate').textContent = CONFIG.date;
     document.getElementById('adminBadge').classList.add('visible');
+
+    document.getElementById('cfgTemplate').addEventListener('change', function() {
+      const hint = document.getElementById('cfgTemplateHint');
+      hint.textContent = TEMPLATE_HINTS[this.value] || '';
+    });
+
     showScreen('screenAdminWelcome');
   }
 </script>
