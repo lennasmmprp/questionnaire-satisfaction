@@ -1160,11 +1160,10 @@
       tpl: CONFIG.template
     });
 
-    // For custom templates, encode general + custom questions in URL
+    // For custom templates, encode ONLY custom questions in URL (General are always added client-side)
     if (CONFIG.template !== 'general' && customTemplates[CONFIG.template]) {
       try {
-        var allQs = GENERAL_QUESTIONS.concat(customTemplates[CONFIG.template].questions);
-        params.set('tplData', btoa(unescape(encodeURIComponent(JSON.stringify(allQs)))));
+        params.set('tplData', btoa(unescape(encodeURIComponent(JSON.stringify(customTemplates[CONFIG.template].questions)))));
       } catch(e) {}
     }
 
@@ -1409,9 +1408,11 @@
   }
 
   // Participant: load custom template from URL data if present
+  // tplData contains ONLY custom questions; General questions are always prepended
   if (IS_PARTICIPANT && urlParams.get('tplData')) {
     try {
-      questions = JSON.parse(decodeURIComponent(escape(atob(urlParams.get('tplData')))));
+      var customQs = JSON.parse(decodeURIComponent(escape(atob(urlParams.get('tplData')))));
+      questions = GENERAL_QUESTIONS.concat(customQs);
       answers = new Array(questions.length).fill(null);
     } catch(e) {
       questions = GENERAL_QUESTIONS;
