@@ -1,111 +1,1439 @@
-// === QUESTIONNAIRE GETUP — Google Apps Script v4 ===
-// Coller ce code dans Code.gs sur script.google.com
-// PUIS : Déployer > Gérer les déploiements > Modifier > Nouvelle version > Déployer
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Questionnaire de satisfaction — Formation</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-// ID du Google Sheet
-var SHEET_ID = '1ntGDtml3xndkNNwOMK4qVIRnjorVpUdZlDPdUAxzJjA';
-// Email de Laurie pour les notifications (laisser vide pour désactiver)
-var NOTIFY_EMAIL = '';
-
-function doGet(e) {
-  var action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
-
-  if (action === 'count') {
-    var formation = e.parameter.formation || '';
-    var date = e.parameter.date || '';
-    var count = countResponses(formation, date);
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'ok',
-      count: count
-    })).setMimeType(ContentService.MimeType.JSON);
+  :root {
+    --navy: #0F1B4C;
+    --navy-light: #1a2a6c;
+    --cream: #FAF6EE;
+    --cream-dark: #F0EBE0;
+    --yellow: #FFF2A1;
+    --yellow-hover: #FFE94A;
+    --white: #FFFFFF;
+    --text-dark: #0F1B4C;
+    --text-muted: #6B7194;
+    --green: #22C55E;
+    --red: #EF4444;
+    --radius-lg: 24px;
+    --radius-md: 16px;
+    --radius-sm: 12px;
   }
 
-  return ContentService.createTextOutput(JSON.stringify({
-    status: 'ok',
-    count: 0,
-    message: 'Questionnaire GetUp API'
-  })).setMimeType(ContentService.MimeType.JSON);
-}
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
-function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--cream);
+    color: var(--text-dark);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    -webkit-font-smoothing: antialiased;
+  }
 
-    var template = data.template || 'general';
-    var templateName = data.templateName || template;
-    var questionLabels = data.questionLabels || [];
-    var answers = data.answers || [];
+  .container {
+    width: 100%;
+    max-width: 480px;
+    min-height: 100dvh;
+    padding: 24px 20px;
+    display: flex;
+    flex-direction: column;
+  }
 
-    // Construire les en-têtes dynamiquement à partir des labels envoyés
-    var headers = ['Horodatage', 'Formation', 'Date formation', 'Formateur', 'Template'];
-    for (var i = 0; i < questionLabels.length; i++) {
-      headers.push('Q' + (i + 1) + ' - ' + questionLabels[i]);
+  .progress-bar-wrap {
+    width: 100%;
+    height: 6px;
+    background: var(--cream-dark);
+    border-radius: 3px;
+    margin-bottom: 32px;
+    overflow: hidden;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .progress-bar-wrap.visible { opacity: 1; }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--navy);
+    border-radius: 3px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%;
+  }
+
+  .screen {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    animation: fadeIn 0.35s ease;
+  }
+  .screen.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .welcome-title {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  .welcome-title .highlight {
+    background: var(--yellow);
+    padding: 0 6px;
+    border-radius: 4px;
+  }
+  .welcome-sub {
+    font-size: 15px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 8px;
+  }
+  .formation-name {
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .formation-date {
+    font-size: 14px;
+    color: var(--text-muted);
+    margin-bottom: 24px;
+  }
+
+  .qr-section {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .qr-section h2 {
+    font-size: 20px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: -0.01em;
+    margin-bottom: 4px;
+  }
+  .qr-section .qr-sub {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .qr-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    display: inline-block;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(15, 27, 76, 0.06);
+  }
+  .qr-card canvas, .qr-card img {
+    display: block;
+    margin: 0 auto;
+  }
+  .qr-formation-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-top: 12px;
+  }
+  .qr-date-label {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .gauge-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    margin-bottom: 24px;
+    display: none;
+  }
+  .gauge-card.visible { display: block; }
+  .gauge-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 12px;
+  }
+  .gauge-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+  }
+  .gauge-count {
+    font-size: 28px;
+    font-weight: 900;
+    color: var(--navy);
+  }
+  .gauge-count small {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-muted);
+  }
+  .gauge-bar-wrap {
+    width: 100%;
+    height: 12px;
+    background: var(--cream);
+    border-radius: 6px;
+    overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .gauge-bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%;
+  }
+  .gauge-bar-fill.low { background: var(--navy); }
+  .gauge-bar-fill.mid { background: var(--yellow-hover); }
+  .gauge-bar-fill.full { background: var(--green); }
+  .gauge-status {
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+  .gauge-status strong { color: var(--text-dark); }
+  .gauge-refresh {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  @media (max-width: 480px) {
+    .container { padding: 16px 16px; justify-content: center; }
+    .welcome-title { font-size: 32px; margin-bottom: 10px; }
+    .welcome-sub { font-size: 16px; margin-bottom: 12px; }
+    .formation-name { font-size: 18px; }
+    .question-text { font-size: 22px; margin-bottom: 20px; }
+    .rating-btn { width: 56px; height: 56px; font-size: 20px; }
+    .btn { padding: 18px 24px; font-size: 16px; }
+    .btn-row { padding-top: 16px; padding-bottom: env(safe-area-inset-bottom, 8px); }
+    .progress-bar-wrap { margin-bottom: 20px; }
+    #screenParticipantWelcome { justify-content: center; }
+    .thankyou-icon { margin-top: 40px; }
+  }
+
+  .question-counter {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+  .question-text {
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.3;
+    margin-bottom: 24px;
+    letter-spacing: -0.01em;
+  }
+
+  .rating-scale {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .rating-btn {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid var(--cream-dark);
+    background: var(--white);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .rating-btn:hover { border-color: var(--navy); background: var(--cream); }
+  .rating-btn.selected {
+    background: var(--navy);
+    color: var(--white);
+    border-color: var(--navy);
+    transform: scale(1.1);
+  }
+  .rating-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+    padding: 0 8px;
+  }
+
+  .choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 32px;
+  }
+  .choice-btn {
+    padding: 16px 20px;
+    background: var(--white);
+    border: 2px solid var(--cream-dark);
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 500;
+    color: var(--text-dark);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .choice-btn:hover { border-color: var(--navy); }
+  .choice-btn.selected {
+    border-color: var(--navy);
+    background: var(--navy);
+    color: var(--white);
+  }
+
+  .open-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 16px;
+    border: 2px solid var(--cream-dark);
+    border-radius: var(--radius-sm);
+    background: var(--white);
+    font-family: inherit;
+    font-size: 15px;
+    color: var(--text-dark);
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+    margin-bottom: 32px;
+  }
+  .open-textarea:focus { border-color: var(--navy); }
+  .open-textarea::placeholder { color: var(--text-muted); }
+
+  .btn-row {
+    margin-top: auto;
+    display: flex;
+    gap: 12px;
+    padding-top: 20px;
+  }
+  .btn {
+    flex: 1;
+    padding: 16px 24px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .btn-primary {
+    background: var(--navy);
+    color: var(--white);
+  }
+  .btn-primary:hover { background: var(--navy-light); }
+  .btn-primary:disabled {
+    background: var(--cream-dark);
+    color: var(--text-muted);
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .btn-secondary {
+    background: var(--white);
+    color: var(--text-dark);
+    border: 2px solid var(--cream-dark);
+  }
+  .btn-secondary:hover { border-color: var(--navy); }
+  .btn-yellow {
+    background: var(--yellow);
+    color: var(--navy);
+  }
+  .btn-yellow:hover { background: var(--yellow-hover); }
+  .btn-danger {
+    background: var(--white);
+    color: var(--red);
+    border: 2px solid #FECACA;
+  }
+  .btn-danger:hover { background: #FEF2F2; }
+  .btn-sm {
+    padding: 8px 16px;
+    font-size: 12px;
+    flex: 0;
+  }
+
+  .thankyou-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--yellow);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    margin: 60px auto 32px;
+  }
+  .thankyou-title {
+    font-size: 28px;
+    font-weight: 900;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+    margin-bottom: 16px;
+  }
+  .thankyou-text {
+    font-size: 15px;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.6;
+  }
+
+  .sending-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(250, 246, 238, 0.9);
+    z-index: 300;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .sending-overlay.visible { display: flex; }
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid var(--cream-dark);
+    border-top-color: var(--navy);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .sending-text {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-dark);
+  }
+
+  .admin-badge {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    background: var(--navy);
+    color: var(--yellow);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    z-index: 100;
+    display: none;
+  }
+  .admin-badge.visible { display: block; }
+
+  /* Config & overlay panels */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 27, 76, 0.6);
+    z-index: 200;
+    align-items: flex-end;
+    justify-content: center;
+  }
+  .overlay.open { display: flex; }
+  .panel {
+    background: var(--white);
+    width: 100%;
+    max-width: 480px;
+    max-height: 85dvh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 24px 20px 32px;
+    overflow-y: auto;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+  .panel h3 {
+    font-size: 18px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin-bottom: 20px;
+  }
+  .config-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin: 20px 0 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--cream-dark);
+  }
+  .config-field {
+    margin-bottom: 16px;
+  }
+  .config-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .config-field input, .config-field select, .config-field textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--cream-dark);
+    border-radius: var(--radius-sm);
+    font-family: inherit;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .config-field input:focus, .config-field select:focus, .config-field textarea:focus {
+    border-color: var(--navy);
+  }
+  .config-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+  .config-status {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .config-status.connected { background: #ECFDF5; color: #047857; }
+  .config-status.disconnected { background: #FEF2F2; color: #B91C1C; }
+  .config-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .live-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* Template manager */
+  .tpl-row-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  .tpl-row-wrap select { flex: 1; }
+  .tpl-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    margin-bottom: 10px;
+  }
+  .tpl-item-info { flex: 1; }
+  .tpl-item-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-dark);
+  }
+  .tpl-item-meta {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  .tpl-item-actions { display: flex; gap: 6px; }
+  .tpl-icon-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+  .tpl-icon-btn.edit { background: var(--cream-dark); color: var(--text-dark); }
+  .tpl-icon-btn.edit:hover { background: var(--navy); color: var(--white); }
+  .tpl-icon-btn.delete { background: #FEE2E2; color: var(--red); }
+  .tpl-icon-btn.delete:hover { background: var(--red); color: var(--white); }
+  .tpl-locked { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+
+  /* Question editor card */
+  .eq-card {
+    background: var(--cream);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .eq-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .eq-num {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+  }
+  .eq-remove {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: none;
+    background: #FEE2E2;
+    color: var(--red);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .eq-remove:hover { background: var(--red); color: var(--white); }
+  .eq-card textarea {
+    width: 100%;
+    min-height: 60px;
+    padding: 10px 12px;
+    border: 2px solid var(--cream-dark);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    resize: vertical;
+    outline: none;
+    margin-bottom: 8px;
+  }
+  .eq-card textarea:focus { border-color: var(--navy); }
+  .eq-card select, .eq-card input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid var(--cream-dark);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 13px;
+    outline: none;
+    margin-bottom: 6px;
+  }
+  .eq-card select:focus, .eq-card input:focus { border-color: var(--navy); }
+  .eq-sub-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+    margin-top: 6px;
+  }
+  .eq-row { display: flex; gap: 8px; }
+  .eq-row input { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="sending-overlay" id="sendingOverlay">
+  <div class="spinner"></div>
+  <div class="sending-text">Envoi en cours…</div>
+</div>
+
+<div class="admin-badge" id="adminBadge" onclick="openConfig()">⚙ Config</div>
+
+<!-- CONFIG PANEL -->
+<div class="overlay" id="configOverlay" onclick="closeOverlayOutside(event,'configOverlay')">
+  <div class="panel">
+    <h3>⚙ Configuration</h3>
+
+    <div class="config-field">
+      <label>Nom de la formation</label>
+      <input type="text" id="cfgFormation" value="Prise de parole en public" placeholder="Ex : Communication en équipe">
+    </div>
+    <div class="config-field">
+      <label>Date de la formation</label>
+      <input type="date" id="cfgDate">
+    </div>
+    <div class="config-field">
+      <label>Formateur / Formatrice</label>
+      <input type="text" id="cfgFormateur" value="" placeholder="Ex : Laurie Benatte">
+    </div>
+    <div class="config-field">
+      <label>Nombre de participants</label>
+      <input type="number" id="cfgParticipants" value="15" min="1" max="200" placeholder="15">
+    </div>
+    <div class="config-field">
+      <label>Modèle de questionnaire</label>
+      <div class="tpl-row-wrap">
+        <select id="cfgTemplate"></select>
+        <button class="btn btn-sm btn-secondary" onclick="openTplManager()">Gérer</button>
+      </div>
+      <div class="config-hint" id="cfgTemplateHint"></div>
+    </div>
+
+    <div class="config-section-title">Connexion Google Sheets</div>
+    <div id="cfgConnectionStatus" class="config-status disconnected">✗ Non connecté</div>
+    <div class="config-field">
+      <label>URL du script Google Apps</label>
+      <input type="url" id="cfgScriptUrl" value="https://script.google.com/macros/s/AKfycbxR2CBwX5pMlMa8KC01mOK4Zon5Z8xbIWYDdpTHv4L2bioIyvK1cMiSvJAruetNIUseZg/exec" placeholder="https://script.google.com/macros/s/…/exec">
+    </div>
+
+    <div class="config-actions">
+      <button class="btn btn-secondary" onclick="closeConfig()">Annuler</button>
+      <button class="btn btn-primary" onclick="applyConfig()">Appliquer</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEMPLATE MANAGER PANEL -->
+<div class="overlay" id="tplManagerOverlay" onclick="closeOverlayOutside(event,'tplManagerOverlay')">
+  <div class="panel">
+    <h3>Modèles de questionnaire</h3>
+    <div id="tplList"></div>
+    <div class="config-actions">
+      <button class="btn btn-secondary" onclick="closeTplManager()">Fermer</button>
+      <button class="btn btn-yellow" onclick="openTplEditor(null)">+ Nouveau modèle</button>
+    </div>
+  </div>
+</div>
+
+<!-- TEMPLATE EDITOR PANEL -->
+<div class="overlay" id="tplEditorOverlay" onclick="closeOverlayOutside(event,'tplEditorOverlay')">
+  <div class="panel">
+    <h3 id="tplEditorTitle">Nouveau modèle</h3>
+    <div class="config-field">
+      <label>Nom du modèle</label>
+      <input type="text" id="tplEditorName" placeholder="Ex : Cohésion d'équipe — 15/12">
+    </div>
+    <div class="config-section-title">Questions</div>
+    <div id="tplEditorQuestions"></div>
+    <button class="btn btn-sm btn-secondary" onclick="addEditorQuestion()" style="margin-bottom:16px; flex:1; width:100%;">+ Ajouter une question</button>
+    <div class="config-actions">
+      <button class="btn btn-secondary" onclick="closeTplEditor()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveTplFromEditor()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="progress-bar-wrap" id="progressWrap">
+    <div class="progress-bar-fill" id="progressFill"></div>
+  </div>
+
+  <!-- ADMIN WELCOME -->
+  <div class="screen" id="screenAdminWelcome">
+    <div class="welcome-title" style="margin-top:40px;">
+      Votre avis<br>nous <span class="highlight">intéresse.</span>
+    </div>
+    <div class="welcome-sub">Configurez la session puis lancez le QR code pour vos participants.</div>
+    <div class="formation-name" id="dispFormation">Prise de parole en public</div>
+    <div class="formation-date" id="dispDate"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="openConfig()">⚙ Configurer</button>
+      <button class="btn btn-primary" onclick="launchSession()">Lancer la session →</button>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div class="screen" id="screenAdminDashboard">
+    <div class="qr-section">
+      <h2>Scannez pour répondre</h2>
+      <div class="qr-sub">Montrez ce QR code aux participants</div>
+      <div class="qr-card">
+        <div id="qrCodeContainer"></div>
+        <div class="qr-formation-label" id="qrFormationLabel"></div>
+        <div class="qr-date-label" id="qrDateLabel"></div>
+      </div>
+    </div>
+
+    <div class="gauge-card visible" id="gaugeCard">
+      <div class="gauge-header">
+        <span class="gauge-label"><span class="live-dot"></span>Réponses reçues</span>
+        <div class="gauge-count"><span id="gaugeReceived">0</span> <small>/ <span id="gaugeTotal">15</span></small></div>
+      </div>
+      <div class="gauge-bar-wrap">
+        <div class="gauge-bar-fill low" id="gaugeBarFill"></div>
+      </div>
+      <div class="gauge-status" id="gaugeStatus">En attente des premières réponses…</div>
+      <div class="gauge-refresh" id="gaugeRefresh">Mise à jour automatique toutes les 10s</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="endSession()">Terminer la session</button>
+    </div>
+  </div>
+
+  <!-- PARTICIPANT WELCOME -->
+  <div class="screen" id="screenParticipantWelcome">
+    <div class="welcome-title" style="margin-top:40px;">
+      Votre avis<br>nous <span class="highlight">intéresse.</span>
+    </div>
+    <div class="welcome-sub">Aidez-nous à améliorer nos formations en répondant à ce court questionnaire.</div>
+    <div class="formation-name" id="dispFormationP"></div>
+    <div class="formation-date" id="dispDateP"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="startQuestions()">C'est parti →</button>
+    </div>
+  </div>
+
+  <!-- QUESTION -->
+  <div class="screen" id="screenQuestion">
+    <div class="question-counter" id="qCounter">Question 1 / 8</div>
+    <div class="question-text" id="qText"></div>
+    <div id="qBody"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="btnPrev" onclick="prevQuestion()">← Retour</button>
+      <button class="btn btn-primary" id="btnNext" onclick="nextQuestion()" disabled>Suivant →</button>
+    </div>
+  </div>
+
+  <!-- THANKS -->
+  <div class="screen" id="screenThanks">
+    <div class="thankyou-icon">✓</div>
+    <div class="thankyou-title">Merci !</div>
+    <div class="thankyou-text">
+      Vos réponses ont bien été enregistrées.<br>
+      Elles nous aideront à améliorer nos prochaines formations.
+    </div>
+  </div>
+
+</div>
+
+<script>
+  /* ======= URL & MODE ======= */
+  const urlParams = new URLSearchParams(window.location.search);
+  const IS_PARTICIPANT = urlParams.has('p');
+
+  let CONFIG = {
+    formation: urlParams.get('f') || 'Prise de parole en public',
+    date: '',
+    formateur: urlParams.get('t') || '',
+    participants: parseInt(urlParams.get('n')) || 15,
+    scriptUrl: 'https://script.google.com/macros/s/AKfycbxR2CBwX5pMlMa8KC01mOK4Zon5Z8xbIWYDdpTHv4L2bioIyvK1cMiSvJAruetNIUseZg/exec',
+    received: 0,
+    dateISO: '',
+    template: urlParams.get('tpl') || 'general'
+  };
+
+  let refreshInterval = null;
+
+  /* ======= TEMPLATE SYSTEM ======= */
+  const GENERAL_QUESTIONS = [
+    { text: "Globalement, êtes-vous satisfait·e de la formation que vous avez suivie ?", type: "rating", labels: ["Pas du tout", "Tout à fait"] },
+    { text: "Êtes-vous satisfait·e des apprentissages délivrés ?", type: "rating", labels: ["Pas du tout", "Tout à fait"] },
+    { text: "Êtes-vous satisfait·e de la méthode d'apprentissage expérientielle (très peu de théorie, beaucoup de pratique) ?", type: "rating", labels: ["Pas du tout", "Tout à fait"] },
+    { text: "Êtes-vous satisfait·e du formateur ?", type: "rating", labels: ["Pas du tout", "Tout à fait"] },
+    { text: "Recommanderiez-vous cette formation ?", type: "choice", options: ["Oui", "Non"] },
+    { text: "Souhaiteriez-vous vous former à d'autres thématiques (management, gestion des conflits…) par le biais de l'impro ?", type: "choice", options: ["Oui", "Non"] },
+    { text: "Si oui, quelle(s) thématique(s) vous intéresserait(ent) ?", type: "text", placeholder: "Management, gestion des conflits, cohésion d'équipe…" },
+    { text: "Selon vous, quels sont les points à améliorer dans cette formation ?", type: "text", placeholder: "Vos suggestions…" }
+  ];
+
+  const THELEM_DEFAULT = {
+    name: "Thelem — 26/11 (prise de parole & communication)",
+    questions: [
+      { text: "Êtes-vous plus en confiance pour vous exprimer oralement quel que soit le contexte ?", type: "rating", labels: ["Pas du tout", "Tout à fait"] },
+      { text: "Vous sentez-vous plus à l'aise pour adapter votre façon de communiquer à la personnalité et au style de chaque interlocuteur ?", type: "rating", labels: ["Pas du tout", "Tout à fait"] },
+      { text: "Êtes-vous plus en mesure d'identifier rapidement le profil de communication d'un client pour ajuster votre posture et votre discours en rendez-vous ?", type: "rating", labels: ["Pas du tout", "Tout à fait"] },
+      { text: "Vous sentez-vous mieux armé(e) pour gérer les imprévus en rendez-vous client (objection, question inattendue, changement de cap du client) ?", type: "rating", labels: ["Pas du tout", "Tout à fait"] },
+      { text: "Quel est l'apport principal que vous retenez de cette formation ?", type: "text", placeholder: "Votre réponse…" },
+      { text: "Quelle question, méthode ou réflexe allez-vous tester dans votre travail à la suite de cette formation ?", type: "text", placeholder: "Votre réponse…" }
+    ]
+  };
+
+  function loadCustomTemplates() {
+    try { return JSON.parse(localStorage.getItem('getup_templates') || '{}'); } catch(e) { return {}; }
+  }
+  function saveCustomTemplates(ct) {
+    try { localStorage.setItem('getup_templates', JSON.stringify(ct)); } catch(e) {}
+  }
+
+  let customTemplates = loadCustomTemplates();
+  // Seed Thelem on first visit
+  if (Object.keys(customTemplates).length === 0 && !localStorage.getItem('getup_templates')) {
+    customTemplates['thelem'] = THELEM_DEFAULT;
+    saveCustomTemplates(customTemplates);
+  }
+
+  function getAllTemplates() {
+    let all = { general: { name: "Général (satisfaction formation)", questions: GENERAL_QUESTIONS, locked: true } };
+    for (let k in customTemplates) {
+      all[k] = { ...customTemplates[k], locked: false };
+    }
+    return all;
+  }
+
+  function getTemplateQuestions(key) {
+    if (key === 'general') return GENERAL_QUESTIONS.slice();
+    if (customTemplates[key]) return GENERAL_QUESTIONS.concat(customTemplates[key].questions);
+    return GENERAL_QUESTIONS.slice();
+  }
+
+  function getTemplateName(key) {
+    if (key === 'general') return "Général (satisfaction formation)";
+    if (customTemplates[key]) return customTemplates[key].name;
+    return key;
+  }
+
+  let questions = getTemplateQuestions(CONFIG.template);
+  let currentQ = 0;
+  let answers = new Array(questions.length).fill(null);
+
+  function switchTemplate(key) {
+    questions = getTemplateQuestions(key);
+    answers = new Array(questions.length).fill(null);
+    currentQ = 0;
+    CONFIG.template = key;
+  }
+
+  /* ======= TEMPLATE SELECTOR ======= */
+  function populateTemplateSelect() {
+    const sel = document.getElementById('cfgTemplate');
+    sel.innerHTML = '';
+    const all = getAllTemplates();
+    for (let k in all) {
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = all[k].name;
+      sel.appendChild(opt);
+    }
+    sel.value = CONFIG.template;
+    updateTemplateHint();
+  }
+
+  function updateTemplateHint() {
+    const key = document.getElementById('cfgTemplate').value;
+    const qs = getTemplateQuestions(key);
+    document.getElementById('cfgTemplateHint').textContent = qs.length + ' questions';
+  }
+
+  /* ======= TEMPLATE MANAGER ======= */
+  function openTplManager() {
+    renderTplList();
+    document.getElementById('tplManagerOverlay').classList.add('open');
+  }
+  function closeTplManager() {
+    document.getElementById('tplManagerOverlay').classList.remove('open');
+    populateTemplateSelect();
+  }
+
+  function renderTplList() {
+    const container = document.getElementById('tplList');
+    container.innerHTML = '';
+    const all = getAllTemplates();
+    for (let k in all) {
+      const tpl = all[k];
+      const div = document.createElement('div');
+      div.className = 'tpl-item';
+      div.innerHTML =
+        '<div class="tpl-item-info">' +
+          '<div class="tpl-item-name">' + (tpl.locked ? '🔒 ' : '') + tpl.name + '</div>' +
+          '<div class="tpl-item-meta">' + tpl.questions.length + ' questions</div>' +
+        '</div>' +
+        (tpl.locked
+          ? '<span class="tpl-locked">Par défaut</span>'
+          : '<div class="tpl-item-actions">' +
+              '<button class="tpl-icon-btn edit" onclick="openTplEditor(\'' + k + '\')" title="Modifier">✏</button>' +
+              '<button class="tpl-icon-btn delete" onclick="deleteTpl(\'' + k + '\')" title="Supprimer">✕</button>' +
+            '</div>'
+        );
+      container.appendChild(div);
+    }
+  }
+
+  function deleteTpl(key) {
+    if (!confirm('Supprimer le modèle "' + getTemplateName(key) + '" ?')) return;
+    delete customTemplates[key];
+    saveCustomTemplates(customTemplates);
+    if (CONFIG.template === key) {
+      CONFIG.template = 'general';
+      switchTemplate('general');
+    }
+    renderTplList();
+  }
+
+  /* ======= TEMPLATE EDITOR ======= */
+  let editorQuestions = [];
+  let editingKey = null;
+
+  function openTplEditor(key) {
+    editingKey = key;
+    if (key && customTemplates[key]) {
+      document.getElementById('tplEditorTitle').textContent = 'Modifier le modèle';
+      document.getElementById('tplEditorName').value = customTemplates[key].name;
+      editorQuestions = JSON.parse(JSON.stringify(customTemplates[key].questions));
+    } else {
+      document.getElementById('tplEditorTitle').textContent = 'Nouveau modèle';
+      document.getElementById('tplEditorName').value = '';
+      editorQuestions = [
+        { text: '', type: 'rating', labels: ['Pas du tout', 'Tout à fait'] }
+      ];
+    }
+    renderEditorQuestions();
+    document.getElementById('tplEditorOverlay').classList.add('open');
+  }
+  function closeTplEditor() {
+    document.getElementById('tplEditorOverlay').classList.remove('open');
+  }
+
+  function renderEditorQuestions() {
+    const container = document.getElementById('tplEditorQuestions');
+    container.innerHTML = '';
+    editorQuestions.forEach(function(q, idx) {
+      const card = document.createElement('div');
+      card.className = 'eq-card';
+
+      let typeFields = '';
+      if (q.type === 'rating') {
+        typeFields =
+          '<div class="eq-sub-label">Labels</div>' +
+          '<div class="eq-row">' +
+            '<input type="text" placeholder="Gauche (ex: Pas du tout)" value="' + ((q.labels && q.labels[0]) || '') + '" onchange="editorQuestions[' + idx + '].labels[0]=this.value">' +
+            '<input type="text" placeholder="Droite (ex: Tout à fait)" value="' + ((q.labels && q.labels[1]) || '') + '" onchange="editorQuestions[' + idx + '].labels[1]=this.value">' +
+          '</div>';
+      } else if (q.type === 'choice') {
+        typeFields =
+          '<div class="eq-sub-label">Options (séparées par des virgules)</div>' +
+          '<input type="text" placeholder="Oui, Non" value="' + ((q.options || []).join(', ')) + '" onchange="editorQuestions[' + idx + '].options=this.value.split(\',\').map(function(s){return s.trim()}).filter(Boolean)">';
+      } else {
+        typeFields =
+          '<div class="eq-sub-label">Placeholder</div>' +
+          '<input type="text" placeholder="Votre réponse…" value="' + (q.placeholder || '') + '" onchange="editorQuestions[' + idx + '].placeholder=this.value">';
+      }
+
+      card.innerHTML =
+        '<div class="eq-header">' +
+          '<span class="eq-num">Question ' + (idx + 1) + '</span>' +
+          '<button class="eq-remove" onclick="removeEditorQuestion(' + idx + ')">✕</button>' +
+        '</div>' +
+        '<textarea placeholder="Texte de la question…" onchange="editorQuestions[' + idx + '].text=this.value">' + (q.text || '') + '</textarea>' +
+        '<select onchange="changeEditorQType(' + idx + ',this.value)">' +
+          '<option value="rating"' + (q.type === 'rating' ? ' selected' : '') + '>Notation (1 à 5)</option>' +
+          '<option value="choice"' + (q.type === 'choice' ? ' selected' : '') + '>Choix</option>' +
+          '<option value="text"' + (q.type === 'text' ? ' selected' : '') + '>Texte libre</option>' +
+        '</select>' +
+        typeFields;
+
+      container.appendChild(card);
+    });
+  }
+
+  function changeEditorQType(idx, type) {
+    editorQuestions[idx].type = type;
+    if (type === 'rating') {
+      editorQuestions[idx].labels = editorQuestions[idx].labels || ['Pas du tout', 'Tout à fait'];
+      delete editorQuestions[idx].options;
+      delete editorQuestions[idx].placeholder;
+    } else if (type === 'choice') {
+      editorQuestions[idx].options = editorQuestions[idx].options || ['Oui', 'Non'];
+      delete editorQuestions[idx].labels;
+      delete editorQuestions[idx].placeholder;
+    } else {
+      editorQuestions[idx].placeholder = editorQuestions[idx].placeholder || 'Votre réponse…';
+      delete editorQuestions[idx].labels;
+      delete editorQuestions[idx].options;
+    }
+    renderEditorQuestions();
+  }
+
+  function addEditorQuestion() {
+    editorQuestions.push({ text: '', type: 'rating', labels: ['Pas du tout', 'Tout à fait'] });
+    renderEditorQuestions();
+  }
+
+  function removeEditorQuestion(idx) {
+    if (editorQuestions.length <= 1) { alert('Il faut au moins 1 question.'); return; }
+    editorQuestions.splice(idx, 1);
+    renderEditorQuestions();
+  }
+
+  function slugify(text) {
+    return text.toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '')
+      .substring(0, 40);
+  }
+
+  function saveTplFromEditor() {
+    const name = document.getElementById('tplEditorName').value.trim();
+    if (!name) { alert('Donnez un nom au modèle.'); return; }
+
+    // Validate questions
+    var valid = true;
+    editorQuestions.forEach(function(q) {
+      if (!q.text.trim()) valid = false;
+      if (q.type === 'choice' && (!q.options || q.options.length < 2)) valid = false;
+    });
+    if (!valid) { alert('Vérifiez que chaque question a un texte, et que les choix ont au moins 2 options.'); return; }
+
+    let key = editingKey;
+    if (!key) {
+      key = slugify(name);
+      if (key === 'general' || customTemplates[key]) {
+        key = key + '-' + Date.now().toString(36).slice(-4);
+      }
     }
 
-    // Créer les en-têtes si la feuille est vide
-    if (sheet.getLastRow() === 0) {
-      sheet.appendRow(headers);
+    customTemplates[key] = { name: name, questions: JSON.parse(JSON.stringify(editorQuestions)) };
+    saveCustomTemplates(customTemplates);
+
+    closeTplEditor();
+    renderTplList();
+    CONFIG.template = key;
+  }
+
+  /* ======= GAUGE ======= */
+  function updateGauge() {
+    const received = CONFIG.received;
+    const total = CONFIG.participants;
+    const pct = Math.min(100, Math.round((received / total) * 100));
+
+    document.getElementById('gaugeReceived').textContent = received;
+    document.getElementById('gaugeTotal').textContent = total;
+
+    const bar = document.getElementById('gaugeBarFill');
+    bar.style.width = pct + '%';
+    bar.className = 'gauge-bar-fill ' + (pct >= 100 ? 'full' : pct >= 50 ? 'mid' : 'low');
+
+    const status = document.getElementById('gaugeStatus');
+    if (received === 0) {
+      status.innerHTML = 'En attente des premières réponses…';
+    } else if (received >= total) {
+      status.innerHTML = '🎉 <strong>Complet !</strong> Toutes les réponses sont reçues.';
+    } else {
+      const remaining = total - received;
+      status.innerHTML = '<strong>' + remaining + '</strong> réponse' + (remaining > 1 ? 's' : '') + ' restante' + (remaining > 1 ? 's' : '');
+    }
+  }
+
+  async function fetchCount() {
+    if (!CONFIG.scriptUrl) return;
+    try {
+      const url = CONFIG.scriptUrl + '?action=count&formation=' + encodeURIComponent(CONFIG.formation) + '&date=' + encodeURIComponent(CONFIG.date);
+      const resp = await fetch(url);
+      const data = await resp.json();
+      if (data && typeof data.count === 'number') {
+        CONFIG.received = data.count;
+        updateGauge();
+      }
+    } catch (e) {
+      console.log('Impossible de récupérer le compteur:', e);
+    }
+  }
+
+  /* ======= QR CODE ======= */
+  function generateQR() {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams({
+      p: '1',
+      f: CONFIG.formation,
+      t: CONFIG.formateur,
+      n: CONFIG.participants,
+      d: CONFIG.date,
+      tpl: CONFIG.template
+    });
+
+    // For custom templates, encode general + custom questions in URL
+    if (CONFIG.template !== 'general' && customTemplates[CONFIG.template]) {
+      try {
+        var allQs = GENERAL_QUESTIONS.concat(customTemplates[CONFIG.template].questions);
+        params.set('tplData', btoa(unescape(encodeURIComponent(JSON.stringify(allQs)))));
+      } catch(e) {}
     }
 
-    // Construire la ligne de données
-    var row = [
-      new Date().toLocaleString('fr-FR'),
-      data.formation || '',
-      data.date || '',
-      data.formateur || '',
-      templateName
-    ];
+    const participantUrl = baseUrl + '?' + params.toString();
 
-    for (var i = 0; i < answers.length; i++) {
-      row.push(answers[i] !== null ? answers[i] : '');
+    const qr = qrcode(0, 'M');
+    qr.addData(participantUrl);
+    qr.make();
+
+    const container = document.getElementById('qrCodeContainer');
+    container.innerHTML = qr.createSvgTag(6, 0);
+    const svg = container.querySelector('svg');
+    if (svg) { svg.style.width = '200px'; svg.style.height = '200px'; }
+
+    document.getElementById('qrFormationLabel').textContent = CONFIG.formation;
+    document.getElementById('qrDateLabel').textContent = CONFIG.date;
+  }
+
+  /* ======= CONFIG ======= */
+  function openConfig() {
+    populateTemplateSelect();
+    document.getElementById('configOverlay').classList.add('open');
+    updateConnectionStatus();
+  }
+  function closeConfig() { document.getElementById('configOverlay').classList.remove('open'); }
+  function closeOverlayOutside(e, id) {
+    if (e.target === document.getElementById(id)) {
+      document.getElementById(id).classList.remove('open');
+      if (id === 'tplManagerOverlay') populateTemplateSelect();
+    }
+  }
+
+  function updateConnectionStatus() {
+    const el = document.getElementById('cfgConnectionStatus');
+    const url = document.getElementById('cfgScriptUrl').value.trim();
+    if (url && url.startsWith('https://script.google.com/')) {
+      el.className = 'config-status connected';
+      el.textContent = '✓ Connecté — les réponses iront au Google Sheet';
+    } else {
+      el.className = 'config-status disconnected';
+      el.textContent = '✗ Non connecté — les réponses restent en local';
+    }
+  }
+  document.getElementById('cfgScriptUrl').addEventListener('input', updateConnectionStatus);
+  document.getElementById('cfgTemplate').addEventListener('change', updateTemplateHint);
+
+  function applyConfig() {
+    CONFIG.formation = document.getElementById('cfgFormation').value || CONFIG.formation;
+    CONFIG.formateur = document.getElementById('cfgFormateur').value;
+    CONFIG.participants = parseInt(document.getElementById('cfgParticipants').value) || 15;
+    CONFIG.scriptUrl = document.getElementById('cfgScriptUrl').value.trim();
+
+    const tpl = document.getElementById('cfgTemplate').value;
+    switchTemplate(tpl);
+
+    const dateVal = document.getElementById('cfgDate').value;
+    if (dateVal) {
+      CONFIG.dateISO = dateVal;
+      const d = new Date(dateVal + 'T00:00:00');
+      CONFIG.date = d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     }
 
-    sheet.appendRow(row);
+    document.getElementById('dispFormation').textContent = CONFIG.formation;
+    document.getElementById('dispDate').textContent = CONFIG.date;
 
-    // Notification email
-    if (NOTIFY_EMAIL) {
-      var count = countResponses(data.formation);
-      var total = data.participants || '?';
-      MailApp.sendEmail({
-        to: NOTIFY_EMAIL,
-        subject: '📋 Questionnaire GetUp — ' + count + '/' + total + ' réponses',
-        htmlBody: '<h2>Nouvelle réponse reçue !</h2>' +
-          '<p><b>Formation :</b> ' + (data.formation || '') + '</p>' +
-          '<p><b>Modèle :</b> ' + templateName + '</p>' +
-          '<p><b>Progression :</b> ' + count + ' / ' + total + ' participants</p>' +
-          '<p><a href="https://docs.google.com/spreadsheets/d/' + SHEET_ID + '">Voir les réponses</a></p>'
+    closeConfig();
+  }
+
+  /* ======= SCREENS ======= */
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(function(s) { s.classList.remove('active'); });
+    document.getElementById(id).classList.add('active');
+  }
+
+  function launchSession() {
+    applyConfig();
+    generateQR();
+    updateGauge();
+    fetchCount();
+    showScreen('screenAdminDashboard');
+    if (refreshInterval) clearInterval(refreshInterval);
+    refreshInterval = setInterval(fetchCount, 10000);
+  }
+
+  function endSession() {
+    if (refreshInterval) clearInterval(refreshInterval);
+    CONFIG.received = 0;
+    updateGauge();
+    showScreen('screenAdminWelcome');
+  }
+
+  /* ======= QUESTIONS ======= */
+  function startQuestions() {
+    document.getElementById('progressWrap').classList.add('visible');
+    showScreen('screenQuestion');
+    renderQuestion();
+  }
+
+  function renderQuestion() {
+    const q = questions[currentQ];
+    document.getElementById('qCounter').textContent = 'Question ' + (currentQ + 1) + ' / ' + questions.length;
+    document.getElementById('qText').textContent = q.text;
+    document.getElementById('progressFill').style.width = (((currentQ + 1) / questions.length) * 100) + '%';
+    document.getElementById('btnPrev').style.visibility = currentQ === 0 ? 'hidden' : 'visible';
+
+    const isLast = currentQ === questions.length - 1;
+    document.getElementById('btnNext').textContent = isLast ? 'Envoyer ✓' : 'Suivant →';
+
+    const body = document.getElementById('qBody');
+    body.innerHTML = '';
+
+    if (q.type === 'rating') {
+      const scale = document.createElement('div');
+      scale.className = 'rating-scale';
+      for (let i = 1; i <= 5; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'rating-btn' + (answers[currentQ] === i ? ' selected' : '');
+        btn.textContent = i;
+        btn.onclick = function() { selectRating(i); };
+        scale.appendChild(btn);
+      }
+      body.appendChild(scale);
+      if (q.labels) {
+        const labels = document.createElement('div');
+        labels.className = 'rating-labels';
+        labels.innerHTML = '<span>' + q.labels[0] + '</span><span>' + q.labels[1] + '</span>';
+        body.appendChild(labels);
+      }
+    } else if (q.type === 'choice') {
+      const wrap = document.createElement('div');
+      wrap.className = 'choices';
+      (q.options || []).forEach(function(opt, i) {
+        const btn = document.createElement('button');
+        btn.className = 'choice-btn' + (answers[currentQ] === i ? ' selected' : '');
+        btn.textContent = opt;
+        btn.onclick = function() { selectChoice(i); };
+        wrap.appendChild(btn);
       });
+      body.appendChild(wrap);
+    } else if (q.type === 'text') {
+      const ta = document.createElement('textarea');
+      ta.className = 'open-textarea';
+      ta.placeholder = q.placeholder || 'Votre réponse…';
+      ta.value = answers[currentQ] || '';
+      ta.oninput = function() { answers[currentQ] = ta.value; updateNextBtn(); };
+      body.appendChild(ta);
+    }
+    updateNextBtn();
+  }
+
+  function selectRating(val) {
+    answers[currentQ] = val;
+    document.querySelectorAll('.rating-btn').forEach(function(btn, i) {
+      btn.classList.toggle('selected', i + 1 === val);
+    });
+    updateNextBtn();
+  }
+
+  function selectChoice(idx) {
+    answers[currentQ] = idx;
+    document.querySelectorAll('.choice-btn').forEach(function(btn, i) {
+      btn.classList.toggle('selected', i === idx);
+    });
+    updateNextBtn();
+  }
+
+  function updateNextBtn() {
+    const q = questions[currentQ];
+    const a = answers[currentQ];
+    const hasAnswer = q.type === 'text' ? true : a !== null;
+    document.getElementById('btnNext').disabled = !hasAnswer;
+  }
+
+  function nextQuestion() {
+    if (currentQ < questions.length - 1) {
+      currentQ++;
+      showScreen('screenQuestion');
+      renderQuestion();
+    } else {
+      submitAnswers();
+    }
+  }
+
+  function prevQuestion() {
+    if (currentQ > 0) {
+      currentQ--;
+      showScreen('screenQuestion');
+      renderQuestion();
+    }
+  }
+
+  /* ======= SUBMIT ======= */
+  async function submitAnswers() {
+    const payload = {
+      formation: CONFIG.formation,
+      date: CONFIG.date || urlParams.get('d') || '',
+      formateur: CONFIG.formateur,
+      participants: CONFIG.participants,
+      template: CONFIG.template,
+      templateName: getTemplateName(CONFIG.template),
+      questionLabels: questions.map(function(q) {
+        return q.text.substring(0, 60);
+      }),
+      answers: answers.map(function(a, i) {
+        const q = questions[i];
+        if (q.type === 'choice') return (q.options && q.options[a]) || '';
+        if (q.type === 'text') return a || '';
+        return a;
+      })
+    };
+
+    if (CONFIG.scriptUrl) {
+      document.getElementById('sendingOverlay').classList.add('visible');
+      try {
+        await fetch(CONFIG.scriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify(payload)
+        });
+      } catch (e) {
+        console.log('Erreur envoi:', e);
+      }
+      document.getElementById('sendingOverlay').classList.remove('visible');
+    } else {
+      console.log('Réponses (mode local):', JSON.stringify(payload, null, 2));
     }
 
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'ok',
-      count: countResponses(data.formation)
-    })).setMimeType(ContentService.MimeType.JSON);
-
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      status: 'error',
-      message: err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
+    document.getElementById('progressWrap').classList.remove('visible');
+    showScreen('screenThanks');
   }
-}
 
-function countResponses(formation, date) {
-  var sheet = SpreadsheetApp.openById(SHEET_ID).getActiveSheet();
-  var lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return 0;
+  /* ======= INIT ======= */
+  const today = new Date();
+  CONFIG.dateISO = today.toISOString().split('T')[0];
+  document.getElementById('cfgDate').value = CONFIG.dateISO;
 
-  // Colonnes B (formation) et C (date) → range de 2 colonnes
-  // getDisplayValues() retourne le texte affiché (pas d'objet Date)
-  var data = sheet.getRange(2, 2, lastRow - 1, 2).getDisplayValues();
-  var count = 0;
-  for (var i = 0; i < data.length; i++) {
-    var cellFormation = data[i][0].trim();
-    var cellDate = data[i][1].trim();
-    var matchFormation = cellFormation === formation;
-    var matchDate = !date || cellDate === date;
-    if (matchFormation && matchDate) count++;
+  if (urlParams.get('d')) {
+    CONFIG.date = urlParams.get('d');
+  } else {
+    CONFIG.date = today.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   }
-  return count;
-}
+
+  // Participant: load custom template from URL data if present
+  if (IS_PARTICIPANT && urlParams.get('tplData')) {
+    try {
+      questions = JSON.parse(decodeURIComponent(escape(atob(urlParams.get('tplData')))));
+      answers = new Array(questions.length).fill(null);
+    } catch(e) {
+      questions = GENERAL_QUESTIONS;
+      answers = new Array(questions.length).fill(null);
+    }
+  } else if (CONFIG.template !== 'general') {
+    switchTemplate(CONFIG.template);
+  }
+
+  if (IS_PARTICIPANT) {
+    document.getElementById('dispFormationP').textContent = CONFIG.formation;
+    document.getElementById('dispDateP').textContent = CONFIG.date;
+    showScreen('screenParticipantWelcome');
+  } else {
+    document.getElementById('cfgFormation').value = CONFIG.formation;
+    document.getElementById('dispFormation').textContent = CONFIG.formation;
+    document.getElementById('dispDate').textContent = CONFIG.date;
+    document.getElementById('adminBadge').classList.add('visible');
+    populateTemplateSelect();
+    showScreen('screenAdminWelcome');
+  }
+</script>
+
+</body>
+</html>
